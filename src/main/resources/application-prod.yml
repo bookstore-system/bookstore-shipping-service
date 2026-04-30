@@ -1,0 +1,13 @@
+shipment:
+  ghn:
+    url: ${GHN_API_URL}
+    apiToken: ${GHN_API_TOKEN}
+    shopId: ${GHN_SHOP_ID}
+    address:
+      fromDistrictId: ${GHN_FROM_DISTRICT_ID}
+      fromWardCode: ${GHN_FROM_WARD_CODE}
+    defaultBook:
+      length: ${GHN_DEFAULT_LENGTH:20}
+      width: ${GHN_DEFAULT_WIDTH:15}
+      height: ${GHN_DEFAULT_HEIGHT:10}
+      weight: ${GHN_DEFAULT_WEIGHT:500}

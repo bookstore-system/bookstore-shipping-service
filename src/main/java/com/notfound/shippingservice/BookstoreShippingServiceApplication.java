@@ -1,4 +1,4 @@
-package com.hamtech.bookstoreshippingservice;
+package com.notfound.shippingservice;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
@@ -9,5 +9,4 @@ public class BookstoreShippingServiceApplication {
     public static void main(String[] args) {
         SpringApplication.run(BookstoreShippingServiceApplication.class, args);
     }
-
 }
