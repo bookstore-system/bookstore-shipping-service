@@ -2,6 +2,8 @@ version: '3.8'
 
 services:
   shipping-service:
+    env_file:
+      - .env
     build: 
       context: .
       target: build
