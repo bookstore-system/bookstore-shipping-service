@@ -1,4 +1,4 @@
-package com.hamtech.bookstoreshippingservice;
+package com.notfound.shippingservice;
 
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -9,5 +9,4 @@ class BookstoreShippingServiceApplicationTests {
     @Test
     void contextLoads() {
     }
-
 }
