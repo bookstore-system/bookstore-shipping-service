@@ -9,4 +9,5 @@ public class DistrictResponse {
     private Integer districtId;
     private Integer provinceId;
     private String districtName;
+    private Integer supportType;
 }

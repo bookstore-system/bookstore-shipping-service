@@ -9,4 +9,5 @@ public class WardResponse {
     private String wardCode;
     private Integer districtId;
     private String wardName;
+    private Integer supportType;
 }
