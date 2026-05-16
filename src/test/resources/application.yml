@@ -1,0 +1,27 @@
+spring:
+  profiles:
+    active: test
+
+clients:
+  ghn:
+    url: https://dev-online-gateway.ghn.vn/shiip/public-api
+
+shipment:
+  ghn:
+    apiToken: test-ghn-token
+    shopId: "197778"
+    shop:
+      name: "Test Shop"
+      phone: "0900000000"
+      address: "Test Address"
+      ward: "Phường 1"
+      district: "Quận 1"
+      province: "Hồ Chí Minh"
+    address:
+      fromDistrictId: 1461
+      fromWardCode: "21301"
+    defaultBook:
+      length: 20
+      width: 15
+      height: 2
+      weight: 300

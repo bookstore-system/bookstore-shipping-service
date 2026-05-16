@@ -1,5 +1,6 @@
 package com.notfound.shippingservice.service.impl;
 
+import com.notfound.shippingservice.client.GhnApiClient;
 import com.notfound.shippingservice.exception.ShippingServiceException;
 import com.notfound.shippingservice.model.dto.request.CancelShippingOrderRequest;
 import com.notfound.shippingservice.model.dto.request.CreateShippingOrderRequest;
@@ -14,13 +15,7 @@ import com.notfound.shippingservice.service.ShippingService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.HttpEntity;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.HttpMethod;
-import org.springframework.http.MediaType;
-import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
-import org.springframework.web.client.RestTemplate;
 
 import java.time.OffsetDateTime;
 import java.time.LocalDateTime;
@@ -34,13 +29,8 @@ import java.util.Objects;
 @Service
 @RequiredArgsConstructor
 public class ShippingServiceImpl implements ShippingService {
-    private final RestTemplate restTemplate = new RestTemplate();
 
-    @Value("${shipment.ghn.url}")
-    private String ghnApiUrl;
-
-    @Value("${shipment.ghn.apiToken}")
-    private String ghnToken;
+    private final GhnApiClient ghnApiClient;
 
     @Value("${shipment.ghn.shopId}")
     private String shopId;
@@ -152,14 +142,8 @@ public class ShippingServiceImpl implements ShippingService {
     @Override
     public List<ProvinceResponse> getProvinces() {
         try {
-            HttpEntity<Void> entity = new HttpEntity<>(buildHeaders(false));
-            ResponseEntity<Map> response = restTemplate.exchange(
-                    ghnApiUrl + "/master-data/province",
-                    HttpMethod.GET,
-                    entity,
-                    Map.class
-            );
-            List<Map<String, Object>> data = (List<Map<String, Object>>) response.getBody().get("data");
+            Map<String, Object> response = ghnApiClient.getProvinces();
+            List<Map<String, Object>> data = (List<Map<String, Object>>) response.get("data");
             return data.stream()
                     .filter(item -> numberValue(item.get("Status")) == 1)
                     .map(item -> ProvinceResponse.builder()
@@ -177,15 +161,8 @@ public class ShippingServiceImpl implements ShippingService {
     @Override
     public List<DistrictResponse> getDistricts(Integer provinceId) {
         try {
-            Map<String, Object> body = Map.of("province_id", provinceId);
-            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, buildHeaders(false));
-            ResponseEntity<Map> response = restTemplate.exchange(
-                    ghnApiUrl + "/master-data/district",
-                    HttpMethod.POST,
-                    entity,
-                    Map.class
-            );
-            List<Map<String, Object>> data = (List<Map<String, Object>>) response.getBody().get("data");
+            Map<String, Object> response = ghnApiClient.getDistricts(Map.of("province_id", provinceId));
+            List<Map<String, Object>> data = (List<Map<String, Object>>) response.get("data");
             return data.stream()
                     .filter(item -> numberValue(item.get("Status")) == 1)
                     .map(item -> DistrictResponse.builder()
@@ -204,15 +181,8 @@ public class ShippingServiceImpl implements ShippingService {
     @Override
     public List<WardResponse> getWards(Integer districtId) {
         try {
-            Map<String, Object> body = Map.of("district_id", districtId);
-            HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, buildHeaders(false));
-            ResponseEntity<Map> response = restTemplate.exchange(
-                    ghnApiUrl + "/master-data/ward",
-                    HttpMethod.POST,
-                    entity,
-                    Map.class
-            );
-            List<Map<String, Object>> data = (List<Map<String, Object>>) response.getBody().get("data");
+            Map<String, Object> response = ghnApiClient.getWards(Map.of("district_id", districtId));
+            List<Map<String, Object>> data = (List<Map<String, Object>>) response.get("data");
             return data.stream()
                     .filter(item -> numberValue(item.get("Status")) == 1)
                     .map(item -> WardResponse.builder()
@@ -242,14 +212,8 @@ public class ShippingServiceImpl implements ShippingService {
                 "insurance_value", request.getInsuranceValue() == null ? 0 : request.getInsuranceValue()
         );
 
-        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, buildHeaders(true));
-        ResponseEntity<Map> response = restTemplate.exchange(
-                ghnApiUrl + "/v2/shipping-order/fee",
-                HttpMethod.POST,
-                entity,
-                Map.class
-        );
-        return (Map<String, Object>) response.getBody().get("data");
+        Map<String, Object> response = ghnApiClient.calculateFee(shopId, body);
+        return (Map<String, Object>) response.get("data");
     }
 
     private Map<String, Object> getLeadTime(Integer toDistrictId, String toWardCode) {
@@ -261,24 +225,7 @@ public class ShippingServiceImpl implements ShippingService {
                 "service_id", 53320
         );
 
-        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(body, buildHeaders(false));
-        ResponseEntity<Map> response = restTemplate.exchange(
-                ghnApiUrl + "/v2/shipping-order/leadtime",
-                HttpMethod.POST,
-                entity,
-                Map.class
-        );
-        return response.getBody();
-    }
-
-    private HttpHeaders buildHeaders(boolean includeShopId) {
-        HttpHeaders headers = new HttpHeaders();
-        headers.setContentType(MediaType.APPLICATION_JSON);
-        headers.set("Token", ghnToken);
-        if (includeShopId) {
-            headers.set("ShopId", shopId);
-        }
-        return headers;
+        return ghnApiClient.getLeadTime(body);
     }
 
     private Integer numberValue(Object value) {
@@ -357,15 +304,7 @@ public class ShippingServiceImpl implements ShippingService {
     }
 
     private Map<String, Object> callGhnCreateOrderApi(Map<String, Object> payload) {
-        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(payload, buildHeaders(true));
-        ResponseEntity<Map> response = restTemplate.exchange(
-                ghnApiUrl + "/v2/shipping-order/create",
-                HttpMethod.POST,
-                entity,
-                Map.class
-        );
-
-        Map<String, Object> body = asMap(response.getBody());
+        Map<String, Object> body = asMap(ghnApiClient.createOrder(shopId, payload));
         if (!Integer.valueOf(200).equals(body.get("code"))) {
             throw new ShippingServiceException("GHN create order API error");
         }
@@ -374,15 +313,7 @@ public class ShippingServiceImpl implements ShippingService {
 
     private Map<String, Object> callGhnCancelOrderApi(String orderCode) {
         Map<String, Object> payload = Map.of("order_codes", List.of(orderCode));
-        HttpEntity<Map<String, Object>> entity = new HttpEntity<>(payload, buildHeaders(true));
-        ResponseEntity<Map> response = restTemplate.exchange(
-                ghnApiUrl + "/v2/switch-status/cancel",
-                HttpMethod.POST,
-                entity,
-                Map.class
-        );
-
-        Map<String, Object> body = asMap(response.getBody());
+        Map<String, Object> body = asMap(ghnApiClient.cancelOrder(shopId, payload));
         if (!Integer.valueOf(200).equals(body.get("code"))) {
             throw new ShippingServiceException("GHN cancel order API error");
         }

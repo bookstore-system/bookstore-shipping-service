@@ -1,3 +1,7 @@
+clients:
+  ghn:
+    url: https://dev-online-gateway.ghn.vn/shiip/public-api
+
 shipment:
   ghn:
     url: https://dev-online-gateway.ghn.vn/shiip/public-api
