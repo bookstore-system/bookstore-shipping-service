@@ -3,6 +3,15 @@ spring:
     name: bookstore-shipping-service
   profiles:
     active: dev
+  cloud:
+    openfeign:
+      client:
+        config:
+          default:
+            connect-timeout: 5000
+            read-timeout: 15000
+          ghn-api-client:
+            read-timeout: 30000
 
 server:
   port: 8080
