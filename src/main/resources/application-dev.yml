@@ -1,13 +1,21 @@
 shipment:
   ghn:
-    url: ${GHN_API_URL:https://dev-online-gateway.ghn.vn/shiip/public-api}
-    apiToken: ${GHN_API_TOKEN:demo-token}
-    shopId: ${GHN_SHOP_ID:0}
+    url: https://dev-online-gateway.ghn.vn/shiip/public-api
+    apiToken: 4149566a-b2e0-11f0-b040-4e257d8388b4
+    shopId: 197778
+    shop:
+      name: "Bookstore Shop"
+      phone: "0374425748"
+      address: "123 Street Name"
+      ward: "Phường 1"
+      district: "Quận Gò Vấp"
+      province: "Hồ Chí Minh"
     address:
-      fromDistrictId: ${GHN_FROM_DISTRICT_ID:1454}
-      fromWardCode: ${GHN_FROM_WARD_CODE:21211}
+      fromDistrictId: 1461
+      fromWardCode: 21301
+      fromProvinceId: 202
     defaultBook:
       length: 20
       width: 15
-      height: 10
-      weight: 500
+      height: 2
+      weight: 300

@@ -1,0 +1,582 @@
+{
+  "info": {
+    "_postman_id": "a1b2c3d4-shipping-service-2026",
+    "name": "Bookstore Shipping Service",
+    "description": "Full API test cho bookstore-shipping-service.\n\nBase path: `/api/v1/shipment`\nWrapper response: `{ code, message, result }`\n\n**Chạy service:**\n- Docker: `http://localhost:8088`\n- Maven local: `http://localhost:8080`\n\n**Thứ tự khuyến nghị:** Master Data → Calculate Fee → Orders → Error cases\n\nCần cấu hình GHN (`GHN_API_TOKEN`, `GHN_SHOP_ID`, ...) để create/cancel order và tính phí thật.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8088",
+      "type": "string"
+    },
+    {
+      "key": "provinceId",
+      "value": "202",
+      "type": "string",
+      "description": "Hồ Chí Minh (mẫu từ application-dev.yml)"
+    },
+    {
+      "key": "districtId",
+      "value": "1461",
+      "type": "string",
+      "description": "Quận Gò Vấp (mẫu)"
+    },
+    {
+      "key": "wardCode",
+      "value": "21301",
+      "type": "string",
+      "description": "Mã phường/xã đích (mẫu)"
+    },
+    {
+      "key": "orderCode",
+      "value": "",
+      "type": "string",
+      "description": "Tự gán sau Create Order"
+    }
+  ],
+  "item": [
+    {
+      "name": "01 - Master Data (Địa giới)",
+      "item": [
+        {
+          "name": "Get Provinces",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('ApiResponse success', () => {",
+                  "    pm.expect(body.code).to.eql(200);",
+                  "    pm.expect(body.message).to.eql('Success');",
+                  "    pm.expect(body.result).to.be.an('array');",
+                  "});",
+                  "if (body.result && body.result.length > 0) {",
+                  "    const hcm = body.result.find(p => p.provinceName && p.provinceName.includes('Hồ Chí Minh')) || body.result[0];",
+                  "    pm.collectionVariables.set('provinceId', String(hcm.provinceId));",
+                  "    pm.test('Saved provinceId', () => pm.expect(pm.collectionVariables.get('provinceId')).to.be.a('string'));",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/shipment/customer/province",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "shipment", "customer", "province"]
+            },
+            "description": "Danh sách tỉnh/thành từ GHN."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Districts by Province",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('Has districts', () => {",
+                  "    pm.expect(body.code).to.eql(200);",
+                  "    pm.expect(body.result).to.be.an('array').that.is.not.empty;",
+                  "});",
+                  "if (body.result && body.result.length > 0) {",
+                  "    pm.collectionVariables.set('districtId', String(body.result[0].districtId));",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/shipment/customer/district?provinceId={{provinceId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "shipment", "customer", "district"],
+              "query": [
+                {
+                  "key": "provinceId",
+                  "value": "{{provinceId}}",
+                  "description": "Bắt buộc"
+                }
+              ]
+            },
+            "description": "Danh sách quận/huyện theo provinceId."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Wards by District",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('Has wards', () => {",
+                  "    pm.expect(body.code).to.eql(200);",
+                  "    pm.expect(body.result).to.be.an('array').that.is.not.empty;",
+                  "});",
+                  "if (body.result && body.result.length > 0) {",
+                  "    pm.collectionVariables.set('wardCode', String(body.result[0].wardCode));",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/shipment/customer/ward?districtId={{districtId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "shipment", "customer", "ward"],
+              "query": [
+                {
+                  "key": "districtId",
+                  "value": "{{districtId}}",
+                  "description": "Bắt buộc"
+                }
+              ]
+            },
+            "description": "Danh sách phường/xã theo districtId."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Districts - Missing provinceId (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                  "const body = pm.response.json();",
+                  "pm.test('Missing provinceId', () => {",
+                  "    pm.expect(body.code).to.eql(400);",
+                  "    pm.expect(body.message).to.include('provinceId');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/shipment/customer/district",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "shipment", "customer", "district"]
+            },
+            "description": "Thiếu query provinceId — kiểm tra lỗi binding."
+          },
+          "response": []
+        }
+      ],
+      "description": "API lấy tỉnh / quận / phường phục vụ chọn địa chỉ giao hàng."
+    },
+    {
+      "name": "02 - Shipping Fee",
+      "item": [
+        {
+          "name": "Calculate Shipping Fee",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('Fee response structure', () => {",
+                  "    pm.expect(body.code).to.eql(200);",
+                  "    pm.expect(body.result).to.be.an('object');",
+                  "    pm.expect(body.result).to.have.property('totalFee');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"toDistrictId\": {{districtId}},\n  \"toWardCode\": \"{{wardCode}}\",\n  \"length\": 20,\n  \"width\": 15,\n  \"height\": 10,\n  \"weight\": 500,\n  \"insuranceValue\": 100000\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/shipment/customer/calculate",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "shipment", "customer", "calculate"]
+            },
+            "description": "Tính phí vận chuyển GHN.\n\n**Bắt buộc:** toDistrictId, toWardCode\n**Mặc định:** length=20, width=15, height=10, weight=500, insuranceValue=0"
+          },
+          "response": []
+        },
+        {
+          "name": "Calculate Fee - Minimal Body (defaults)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 or 502', () => {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 502]);",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"toDistrictId\": {{districtId}},\n  \"toWardCode\": \"{{wardCode}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/shipment/customer/calculate",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "shipment", "customer", "calculate"]
+            },
+            "description": "Chỉ gửi field bắt buộc; kích thước/trọng lượng dùng default trong DTO."
+          },
+          "response": []
+        },
+        {
+          "name": "Calculate Fee - Validation Error (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                  "const body = pm.response.json();",
+                  "pm.test('Validation error', () => {",
+                  "    pm.expect(body.code).to.eql(400);",
+                  "    pm.expect(body.message).to.be.a('string');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"toDistrictId\": null,\n  \"toWardCode\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/shipment/customer/calculate",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "shipment", "customer", "calculate"]
+            },
+            "description": "toDistrictId null và toWardCode rỗng → 400."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "03 - Orders (GHN)",
+      "item": [
+        {
+          "name": "Create Shipping Order",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200', () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "if (body.code === 200 && body.result && body.result.orderCode) {",
+                  "    pm.collectionVariables.set('orderCode', body.result.orderCode);",
+                  "    pm.test('Saved orderCode', () => {",
+                  "        pm.expect(pm.collectionVariables.get('orderCode')).to.not.be.empty;",
+                  "    });",
+                  "}",
+                  "pm.test('Create order response', () => {",
+                  "    pm.expect(body).to.have.property('code');",
+                  "    if (body.code === 200) {",
+                  "        pm.expect(body.result).to.have.property('orderCode');",
+                  "    }",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"toName\": \"Nguyen Van A\",\n  \"toPhone\": \"0374425748\",\n  \"toAddress\": \"123 Duong ABC\",\n  \"toWardName\": \"Phường 1\",\n  \"toDistrictName\": \"Quận Gò Vấp\",\n  \"toProvinceName\": \"Hồ Chí Minh\",\n  \"codAmount\": 0,\n  \"note\": \"Giao trong giờ hành chính\",\n  \"content\": \"Sach - Bookstore\",\n  \"length\": 20,\n  \"width\": 15,\n  \"height\": 10,\n  \"weight\": 500,\n  \"insuranceValue\": 0,\n  \"clientOrderCode\": \"BOOK-TEST-{{$timestamp}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/shipment/order",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "shipment", "order"]
+            },
+            "description": "Tạo đơn GHN.\n\n**Phone:** `^(0|\\+84)[0-9]{9,10}$` — ví dụ `0374425748`, `+84901234567`\n\nCần token GHN hợp lệ."
+          },
+          "response": []
+        },
+        {
+          "name": "Cancel Shipping Order",
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "if (!pm.collectionVariables.get('orderCode')) {",
+                  "    console.warn('orderCode chưa có — chạy Create Shipping Order trước hoặc set biến orderCode thủ công.');",
+                  "}"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 200 or 502', () => {",
+                  "    pm.expect(pm.response.code).to.be.oneOf([200, 502]);",
+                  "});",
+                  "const body = pm.response.json();",
+                  "if (body.code === 200 && body.result) {",
+                  "    pm.test('Cancel response', () => {",
+                  "        pm.expect(body.result).to.have.property('orderCode');",
+                  "        pm.expect(body.result).to.have.property('cancelled');",
+                  "    });",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderCode\": \"{{orderCode}}\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/shipment/order/cancel",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "shipment", "order", "cancel"]
+            },
+            "description": "Hủy đơn theo orderCode GHN (lấy từ Create Order)."
+          },
+          "response": []
+        },
+        {
+          "name": "Create Order - Invalid Phone (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                  "const body = pm.response.json();",
+                  "pm.test('Phone validation', () => {",
+                  "    pm.expect(body.code).to.eql(400);",
+                  "    pm.expect(body.message).to.include('toPhone');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"toName\": \"Test User\",\n  \"toPhone\": \"123\",\n  \"toAddress\": \"123 Street\",\n  \"toWardName\": \"Phường 1\",\n  \"toDistrictName\": \"Quận 1\",\n  \"toProvinceName\": \"Hồ Chí Minh\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/shipment/order",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "shipment", "order"]
+            },
+            "description": "Số điện thoại không khớp regex → 400."
+          },
+          "response": []
+        },
+        {
+          "name": "Cancel Order - Empty orderCode (400)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test('Status 400', () => pm.response.to.have.status(400));",
+                  "pm.test('Validation', () => pm.expect(pm.response.json().code).to.eql(400));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"orderCode\": \"\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{baseUrl}}/api/v1/shipment/order/cancel",
+              "host": ["{{baseUrl}}"],
+              "path": ["api", "v1", "shipment", "order", "cancel"]
+            },
+            "description": "orderCode rỗng → 400."
+          },
+          "response": []
+        }
+      ],
+      "description": "Tạo và hủy đơn vận chuyển qua GHN. Cần cấu hình API token thật."
+    },
+    {
+      "name": "04 - Docs & Health",
+      "item": [
+        {
+          "name": "OpenAPI JSON",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/v3/api-docs",
+              "host": ["{{baseUrl}}"],
+              "path": ["v3", "api-docs"]
+            },
+            "description": "Springdoc OpenAPI spec."
+          },
+          "response": []
+        },
+        {
+          "name": "Swagger UI",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/swagger-ui.html",
+              "host": ["{{baseUrl}}"],
+              "path": ["swagger-ui.html"]
+            },
+            "description": "Mở trên browser để xem UI."
+          },
+          "response": []
+        }
+      ]
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [""]
+      }
+    },
+    {
+      "listen": "test",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "pm.test('Response time < 15s', () => {",
+          "    pm.expect(pm.response.responseTime).to.be.below(15000);",
+          "});"
+        ]
+      }
+    }
+  ]
+}
