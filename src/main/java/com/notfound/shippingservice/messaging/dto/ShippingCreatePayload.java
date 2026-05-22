@@ -19,4 +19,5 @@ public class ShippingCreatePayload {
     private Integer weight;
     private Integer insuranceValue;
     private String clientOrderCode;
+    private Double expectedShippingFee;
 }

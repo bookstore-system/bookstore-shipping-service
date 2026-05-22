@@ -62,4 +62,7 @@ public class CreateShippingOrderRequest {
 
     @Size(max = 50)
     private String clientOrderCode;
+
+    @Min(0)
+    private Double fallbackShippingFee;
 }
