@@ -33,6 +33,7 @@ shipment:
     url: ${GHN_API_URL:https://dev-online-gateway.ghn.vn/shiip/public-api}
     apiToken: ${GHN_API_TOKEN:4149566a-b2e0-11f0-b040-4e257d8388b4}
     shopId: ${GHN_SHOP_ID:197778}
+    createFallbackEnabled: ${GHN_CREATE_FALLBACK_ENABLED:true}
     shop:
       name: ${GHN_SHOP_NAME:Bookstore Shop}
       phone: ${GHN_SHOP_PHONE:0374425748}

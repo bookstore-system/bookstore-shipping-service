@@ -71,6 +71,9 @@ public class ShippingServiceImpl implements ShippingService {
     @Value("${shipment.ghn.shop.province:}")
     private String shopProvince;
 
+    @Value("${shipment.ghn.createFallbackEnabled:true}")
+    private boolean createFallbackEnabled;
+
     @Override
     public ShippingFeeResponse calculateFee(ShippingFeeRequest request) {
         try {
@@ -111,6 +114,9 @@ public class ShippingServiceImpl implements ShippingService {
                     .build();
         } catch (Exception ex) {
             log.error("Failed to create shipping order", ex);
+            if (createFallbackEnabled) {
+                return buildFallbackShippingOrder(request, ex);
+            }
             throw new ShippingServiceException("Failed to create shipping order");
         }
     }
@@ -134,6 +140,14 @@ public class ShippingServiceImpl implements ShippingService {
         } catch (ShippingServiceException ex) {
             throw ex;
         } catch (Exception ex) {
+            if (createFallbackEnabled && request.getOrderCode() != null
+                    && request.getOrderCode().startsWith("LOCAL-")) {
+                return CancelShippingOrderResponse.builder()
+                        .orderCode(request.getOrderCode())
+                        .cancelled(true)
+                        .message("Local fallback shipment cancelled")
+                        .build();
+            }
             log.error("Failed to cancel shipping order {}", request.getOrderCode(), ex);
             throw new ShippingServiceException("Failed to cancel shipping order");
         }
@@ -268,9 +282,8 @@ public class ShippingServiceImpl implements ShippingService {
     }
 
     private void validateShopConfiguration() {
-        if (isBlank(shopName) || isBlank(shopPhone) || isBlank(shopAddress)
-                || isBlank(shopWard) || isBlank(shopDistrict) || isBlank(shopProvince)) {
-            throw new ShippingServiceException("Missing shipment.ghn.shop.* configuration");
+        if (isBlank(shopId)) {
+            throw new ShippingServiceException("Missing shipment.ghn.shopId configuration");
         }
     }
 
@@ -279,12 +292,6 @@ public class ShippingServiceImpl implements ShippingService {
                 Map.entry("payment_type_id", 2),
                 Map.entry("required_note", "KHONGCHOXEMHANG"),
                 Map.entry("note", Objects.requireNonNullElse(request.getNote(), "Giao hang trong gio hanh chinh")),
-                Map.entry("from_name", shopName),
-                Map.entry("from_phone", shopPhone),
-                Map.entry("from_address", shopAddress),
-                Map.entry("from_ward_name", shopWard),
-                Map.entry("from_district_name", shopDistrict),
-                Map.entry("from_province_name", shopProvince),
                 Map.entry("to_name", request.getToName()),
                 Map.entry("to_phone", request.getToPhone()),
                 Map.entry("to_address", request.getToAddress()),
@@ -309,6 +316,19 @@ public class ShippingServiceImpl implements ShippingService {
             throw new ShippingServiceException("GHN create order API error");
         }
         return body;
+    }
+
+    private CreateShippingOrderResponse buildFallbackShippingOrder(CreateShippingOrderRequest request, Exception ex) {
+        String orderCode = "LOCAL-" + (request.getClientOrderCode() == null || request.getClientOrderCode().isBlank()
+                ? System.currentTimeMillis()
+                : request.getClientOrderCode());
+        log.warn("Using local fallback shipping orderCode={} because GHN create failed: {}", orderCode, ex.getMessage());
+        return CreateShippingOrderResponse.builder()
+                .orderCode(orderCode)
+                .sortingCode("LOCAL")
+                .expectedDeliveryTime(LocalDateTime.now().plusDays(3))
+                .totalFee(request.getFallbackShippingFee() == null ? 0D : request.getFallbackShippingFee())
+                .build();
     }
 
     private Map<String, Object> callGhnCancelOrderApi(String orderCode) {

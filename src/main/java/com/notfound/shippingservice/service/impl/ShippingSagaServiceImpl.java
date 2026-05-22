@@ -1,6 +1,5 @@
 package com.notfound.shippingservice.service.impl;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.notfound.shippingservice.config.SagaShippingProperties;
 import com.notfound.shippingservice.exception.ShippingServiceException;
 import com.notfound.shippingservice.messaging.SagaEventPublisher;
@@ -24,6 +23,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import tools.jackson.databind.ObjectMapper;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -219,6 +219,9 @@ public class ShippingSagaServiceImpl implements ShippingSagaService {
         }
         if (payload.getInsuranceValue() != null) {
             request.setInsuranceValue(payload.getInsuranceValue());
+        }
+        if (payload.getExpectedShippingFee() != null) {
+            request.setFallbackShippingFee(payload.getExpectedShippingFee());
         }
         request.setClientOrderCode(payload.getClientOrderCode());
         return request;
