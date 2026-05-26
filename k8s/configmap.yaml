@@ -5,10 +5,9 @@ metadata:
 data:
   SPRING_DATASOURCE_URL: "jdbc:mysql://bookstore-db-do-user-36177370-0.h.db.ondigitalocean.com:25060/bookstore_shipping?useSSL=true&allowPublicKeyRetrieval=true&serverTimezone=UTC"
   SPRING_JPA_HIBERNATE_DDL_AUTO: "update"
-  SPRING_RABBITMQ_HOST: "rabbitmq"
-  SPRING_RABBITMQ_PORT: "5672"
-  SPRING_RABBITMQ_USERNAME: "bookstore"
-  SPRING_RABBITMQ_PASSWORD: "bookstore"
+  SPRING_RABBITMQ_HOST: "143.198.204.41"
+  SPRING_RABBITMQ_PORT: "15672"
+  SPRING_RABBITMQ_VIRTUAL_HOST: "bookstore"
   GHN_API_URL: "https://dev-online-gateway.ghn.vn/shiip/public-api"
   GHN_SHOP_ID: "197778"
   GHN_SHOP_NAME: "Bookstore Shop"
