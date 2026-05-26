@@ -1,0 +1,48 @@
+bookstore:
+  saga:
+    enabled: true
+    commands-exchange: bookstore.commands
+    events-exchange: bookstore.events
+    commands-queue: shipping.commands.queue
+
+spring:
+  rabbitmq:
+    host: ${SPRING_RABBITMQ_HOST}
+    port: ${SPRING_RABBITMQ_PORT:5672}
+    username: ${SPRING_RABBITMQ_USERNAME:guest}
+    password: ${SPRING_RABBITMQ_PASSWORD:guest}
+  datasource:
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate:
+      ddl-auto: ${SPRING_JPA_HIBERNATE_DDL_AUTO:validate}
+    database-platform: org.hibernate.dialect.MySQLDialect
+
+clients:
+  ghn:
+    url: ${GHN_API_URL}
+
+shipment:
+  ghn:
+    url: ${GHN_API_URL}
+    apiToken: ${GHN_API_TOKEN}
+    shopId: ${GHN_SHOP_ID}
+    shop:
+      name: ${GHN_SHOP_NAME}
+      phone: ${GHN_SHOP_PHONE}
+      address: ${GHN_SHOP_ADDRESS}
+      ward: ${GHN_SHOP_WARD}
+      district: ${GHN_SHOP_DISTRICT}
+      province: ${GHN_SHOP_PROVINCE}
+    address:
+      fromDistrictId: ${GHN_FROM_DISTRICT_ID}
+      fromWardCode: ${GHN_FROM_WARD_CODE}
+      fromProvinceId: ${GHN_FROM_PROVINCE_ID}
+    defaultBook:
+      length: ${GHN_DEFAULT_LENGTH:20}
+      width: ${GHN_DEFAULT_WIDTH:15}
+      height: ${GHN_DEFAULT_HEIGHT:2}
+      weight: ${GHN_DEFAULT_WEIGHT:300}

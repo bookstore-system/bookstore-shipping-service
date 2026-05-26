@@ -1,0 +1,24 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: shipping-service-config
+data:
+  SPRING_DATASOURCE_URL: "jdbc:mysql://bookstore-db-do-user-36177370-0.h.db.ondigitalocean.com:25060/bookstore_shipping?useSSL=true&allowPublicKeyRetrieval=true&serverTimezone=UTC"
+  SPRING_JPA_HIBERNATE_DDL_AUTO: "update"
+  SPRING_RABBITMQ_HOST: "rabbitmq"
+  SPRING_RABBITMQ_PORT: "5672"
+  GHN_API_URL: "https://dev-online-gateway.ghn.vn/shiip/public-api"
+  GHN_SHOP_ID: "197778"
+  GHN_SHOP_NAME: "Bookstore Shop"
+  GHN_SHOP_PHONE: "0374425748"
+  GHN_SHOP_ADDRESS: "123 Street Name"
+  GHN_SHOP_WARD: "Phường 1"
+  GHN_SHOP_DISTRICT: "Quận Gò Vấp"
+  GHN_SHOP_PROVINCE: "Hồ Chí Minh"
+  GHN_FROM_WARD_CODE: "21301"
+  GHN_FROM_DISTRICT_ID: "1461"
+  GHN_FROM_PROVINCE_ID: "202"
+  GHN_DEFAULT_LENGTH: "20"
+  GHN_DEFAULT_WIDTH: "15"
+  GHN_DEFAULT_HEIGHT: "2"
+  GHN_DEFAULT_WEIGHT: "300"
