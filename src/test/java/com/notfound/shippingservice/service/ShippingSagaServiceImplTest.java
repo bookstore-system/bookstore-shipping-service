@@ -1,7 +1,7 @@
 package com.notfound.shippingservice.service;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.node.JsonNodeFactory;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.node.JsonNodeFactory;
 import com.notfound.shippingservice.config.SagaShippingProperties;
 import com.notfound.shippingservice.exception.ShippingServiceException;
 import com.notfound.shippingservice.messaging.SagaEventPublisher;
