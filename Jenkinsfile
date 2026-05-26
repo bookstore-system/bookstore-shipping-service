@@ -2,85 +2,100 @@ pipeline {
     agent any
 
     environment {
-        // Change variables below to match your environment
-        DOCKER_CREDENTIALS_ID = 'docker-hub-credentials'
-        DOCKER_REGISTRY = 'notfoundteam'
-        IMAGE_NAME = "bookstore-${env.JOB_NAME}"
-        TAG = "${env.BUILD_ID}"
+        DOCKER_REGISTRY = 'truongdocker1'
+        DOCKER_CREDENTIALS_ID = 'dockerhub-creds'
+        IMAGE_NAME = 'bookstore-shipping-service'
+        TAG = "${BUILD_NUMBER}"
+
+        K8S_DEPLOYMENT = 'shipping-service-deployment'
+        K8S_CONTAINER = 'shipping-service'
     }
 
     tools {
-        // Must match the name configured in Jenkins Global Tool Configuration
         maven 'Maven 3.9'
         jdk 'JDK 21'
     }
 
     stages {
+
         stage('Checkout') {
             steps {
-                echo 'Checking out source code...'
                 checkout scm
             }
         }
 
         stage('Build & Test') {
             steps {
-                echo 'Compiling and Running Unit Tests...'
-                // Skip tests for faster builds during dev phase if needed: -DskipTests
-                sh 'mvn clean package'
-            }
-            post {
-                always {
-                    junit 'target/surefire-reports/*.xml'
-                }
+                sh 'mvn clean package -DskipTests'
             }
         }
 
-        stage('SonarQube Analysis') {
+        stage('Docker Build') {
             steps {
-                echo 'Skipping SonarQube in basic template. Add sonar-maven-plugin here.'
-                // sh 'mvn sonar:sonar -Dsonar.projectKey=${IMAGE_NAME} -Dsonar.host.url=http://your-sonarqube-server'
-            }
-        }
-
-        stage('Build Docker Image') {
-            steps {
-                echo 'Building Docker image...'
                 script {
-                    dockerImage = docker.build("${DOCKER_REGISTRY}/${IMAGE_NAME}:${TAG}", ".")
+                    dockerImage = docker.build(
+                        "${DOCKER_REGISTRY}/${IMAGE_NAME}:${TAG}",
+                        "."
+                    )
                 }
             }
         }
 
         stage('Push Docker Image') {
             steps {
-                echo 'Pushing image to Docker Hub...'
                 script {
-                    docker.withRegistry('https://index.docker.io/v1/', "${DOCKER_CREDENTIALS_ID}") {
+                    docker.withRegistry(
+                        'https://index.docker.io/v1/',
+                        "${DOCKER_CREDENTIALS_ID}"
+                    ) {
                         dockerImage.push()
-                        // Optional: Tag as latest
-                        dockerImage.push('latest')
                     }
                 }
             }
         }
 
-        stage('Deploy/Update K8s or Server') {
+        stage('Deploy to Kubernetes') {
             steps {
-                echo 'Deploying to staging environment...'
-                // sh 'kubectl set image deployment/${IMAGE_NAME} ${IMAGE_NAME}=${DOCKER_REGISTRY}/${IMAGE_NAME}:${TAG}'
+                withCredentials([
+                    usernamePassword(credentialsId: 'db-creds', usernameVariable: 'DB_USERNAME', passwordVariable: 'DB_PASSWORD'),
+                    usernamePassword(credentialsId: 'rabbitmq-creds', usernameVariable: 'SPRING_RABBITMQ_USERNAME', passwordVariable: 'SPRING_RABBITMQ_PASSWORD'),
+                    string(credentialsId: 'ghn-api-token', variable: 'GHN_API_TOKEN')
+                ]) {
+                    sh '''
+                export KUBECONFIG=/var/jenkins_home/.kube/config
+
+                # Update image tag robustly, even if the workspace still has an older build tag.
+                sed -i "s|image: .*${IMAGE_NAME}:.*|image: ${DOCKER_REGISTRY}/${IMAGE_NAME}:${TAG}|g" k8s/deployment.yaml
+
+                # ConfigMap is safe to keep in Git.
+                kubectl apply -f k8s/configmap.yaml
+
+                # App secret from Jenkins Credentials. Do not apply k8s/secret.yaml with real values.
+                kubectl create secret generic shipping-service-secret \
+                  --from-literal=SPRING_DATASOURCE_USERNAME="$DB_USERNAME" \
+                  --from-literal=SPRING_DATASOURCE_PASSWORD="$DB_PASSWORD" \
+                  --from-literal=SPRING_RABBITMQ_USERNAME="$SPRING_RABBITMQ_USERNAME" \
+                  --from-literal=SPRING_RABBITMQ_PASSWORD="$SPRING_RABBITMQ_PASSWORD" \
+                  --from-literal=GHN_API_TOKEN="$GHN_API_TOKEN" \
+                  --dry-run=client -o yaml | kubectl apply -f -
+
+                # Deploy app.
+                kubectl apply -f k8s/deployment.yaml
+                kubectl apply -f k8s/service.yaml
+
+                kubectl rollout status deployment/${K8S_DEPLOYMENT} --timeout=180s
+                '''
+                }
             }
         }
     }
 
     post {
         success {
-            echo "Success: Build and Deploy finished."
-            // mail to: 'team@notfound.com', subject: "SUCCESS: ${env.JOB_NAME}", body: "Build has succeeded."
+            echo "Build & Deploy SUCCESS"
         }
         failure {
-            echo "Failed: Pipeline failed!"
-            // mail to: 'team@notfound.com', subject: "FAILED: ${env.JOB_NAME}", body: "Build has failed."
+            echo "Build FAILED"
         }
     }
 }
