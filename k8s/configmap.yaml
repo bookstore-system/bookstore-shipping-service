@@ -7,6 +7,8 @@ data:
   SPRING_JPA_HIBERNATE_DDL_AUTO: "update"
   SPRING_RABBITMQ_HOST: "rabbitmq"
   SPRING_RABBITMQ_PORT: "5672"
+  SPRING_RABBITMQ_USERNAME: "guest"
+  SPRING_RABBITMQ_PASSWORD: "guest"
   GHN_API_URL: "https://dev-online-gateway.ghn.vn/shiip/public-api"
   GHN_SHOP_ID: "197778"
   GHN_SHOP_NAME: "Bookstore Shop"
