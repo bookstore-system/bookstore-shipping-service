@@ -15,149 +15,40 @@ spec:
         app: shipping-service
     spec:
       containers:
-      - name: shipping-service
-        image: truongdocker1/bookstore-shipping-service:latest
-        imagePullPolicy: Always
-        ports:
-        - containerPort: 8080
-        env:
-        - name: SPRING_PROFILES_ACTIVE
-          value: "prod"
-        - name: SPRING_DATASOURCE_URL
-          valueFrom:
-            configMapKeyRef:
-              name: shipping-service-config
-              key: SPRING_DATASOURCE_URL
-        - name: SPRING_JPA_HIBERNATE_DDL_AUTO
-          valueFrom:
-            configMapKeyRef:
-              name: shipping-service-config
-              key: SPRING_JPA_HIBERNATE_DDL_AUTO
-        - name: SPRING_RABBITMQ_HOST
-          valueFrom:
-            configMapKeyRef:
-              name: shipping-service-config
-              key: SPRING_RABBITMQ_HOST
-        - name: SPRING_RABBITMQ_PORT
-          valueFrom:
-            configMapKeyRef:
-              name: shipping-service-config
-              key: SPRING_RABBITMQ_PORT
-        - name: GHN_API_URL
-          valueFrom:
-            configMapKeyRef:
-              name: shipping-service-config
-              key: GHN_API_URL
-        - name: GHN_SHOP_ID
-          valueFrom:
-            configMapKeyRef:
-              name: shipping-service-config
-              key: GHN_SHOP_ID
-        - name: GHN_SHOP_NAME
-          valueFrom:
-            configMapKeyRef:
-              name: shipping-service-config
-              key: GHN_SHOP_NAME
-        - name: GHN_SHOP_PHONE
-          valueFrom:
-            configMapKeyRef:
-              name: shipping-service-config
-              key: GHN_SHOP_PHONE
-        - name: GHN_SHOP_ADDRESS
-          valueFrom:
-            configMapKeyRef:
-              name: shipping-service-config
-              key: GHN_SHOP_ADDRESS
-        - name: GHN_SHOP_WARD
-          valueFrom:
-            configMapKeyRef:
-              name: shipping-service-config
-              key: GHN_SHOP_WARD
-        - name: GHN_SHOP_DISTRICT
-          valueFrom:
-            configMapKeyRef:
-              name: shipping-service-config
-              key: GHN_SHOP_DISTRICT
-        - name: GHN_SHOP_PROVINCE
-          valueFrom:
-            configMapKeyRef:
-              name: shipping-service-config
-              key: GHN_SHOP_PROVINCE
-        - name: GHN_FROM_WARD_CODE
-          valueFrom:
-            configMapKeyRef:
-              name: shipping-service-config
-              key: GHN_FROM_WARD_CODE
-        - name: GHN_FROM_DISTRICT_ID
-          valueFrom:
-            configMapKeyRef:
-              name: shipping-service-config
-              key: GHN_FROM_DISTRICT_ID
-        - name: GHN_FROM_PROVINCE_ID
-          valueFrom:
-            configMapKeyRef:
-              name: shipping-service-config
-              key: GHN_FROM_PROVINCE_ID
-        - name: GHN_DEFAULT_LENGTH
-          valueFrom:
-            configMapKeyRef:
-              name: shipping-service-config
-              key: GHN_DEFAULT_LENGTH
-        - name: GHN_DEFAULT_WIDTH
-          valueFrom:
-            configMapKeyRef:
-              name: shipping-service-config
-              key: GHN_DEFAULT_WIDTH
-        - name: GHN_DEFAULT_HEIGHT
-          valueFrom:
-            configMapKeyRef:
-              name: shipping-service-config
-              key: GHN_DEFAULT_HEIGHT
-        - name: GHN_DEFAULT_WEIGHT
-          valueFrom:
-            configMapKeyRef:
-              name: shipping-service-config
-              key: GHN_DEFAULT_WEIGHT
-        - name: SPRING_DATASOURCE_USERNAME
-          valueFrom:
-            secretKeyRef:
-              name: shipping-service-secret
-              key: SPRING_DATASOURCE_USERNAME
-        - name: SPRING_DATASOURCE_PASSWORD
-          valueFrom:
-            secretKeyRef:
-              name: shipping-service-secret
-              key: SPRING_DATASOURCE_PASSWORD
-        - name: SPRING_RABBITMQ_USERNAME
-          valueFrom:
-            configMapKeyRef:
-              name: shipping-service-config
-              key: SPRING_RABBITMQ_USERNAME
-        - name: SPRING_RABBITMQ_PASSWORD
-          valueFrom:
-            configMapKeyRef:
-              name: shipping-service-config
-              key: SPRING_RABBITMQ_PASSWORD
-        - name: GHN_API_TOKEN
-          valueFrom:
-            secretKeyRef:
-              name: shipping-service-secret
-              key: GHN_API_TOKEN
-        resources:
-          requests:
-            memory: "256Mi"
-            cpu: "250m"
-          limits:
-            memory: "512Mi"
-            cpu: "500m"
-        readinessProbe:
-          tcpSocket:
-            port: 8080
-          initialDelaySeconds: 20
-          periodSeconds: 10
-          failureThreshold: 6
-        livenessProbe:
-          tcpSocket:
-            port: 8080
-          initialDelaySeconds: 60
-          periodSeconds: 30
+        - name: shipping-service
+          image: truongdocker1/bookstore-shipping-service:latest
+          imagePullPolicy: Always
+          ports:
+            - containerPort: 8080
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              value: "prod"
+          envFrom:
+            - configMapRef:
+                name: shipping-service-config
+            - secretRef:
+                name: shipping-service-secret
+          resources:
+            requests:
+              memory: "256Mi"
+              cpu: "250m"
+            limits:
+              memory: "512Mi"
+              cpu: "500m"
+          startupProbe:
+            tcpSocket:
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 10
+            failureThreshold: 30
+          readinessProbe:
+            tcpSocket:
+              port: 8080
+            periodSeconds: 10
+            failureThreshold: 3
+          livenessProbe:
+            tcpSocket:
+              port: 8080
+            initialDelaySeconds: 90
+            periodSeconds: 30
+            failureThreshold: 3
