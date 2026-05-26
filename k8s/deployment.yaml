@@ -130,13 +130,13 @@ spec:
               key: SPRING_DATASOURCE_PASSWORD
         - name: SPRING_RABBITMQ_USERNAME
           valueFrom:
-            secretKeyRef:
-              name: shipping-service-secret
+            configMapKeyRef:
+              name: shipping-service-config
               key: SPRING_RABBITMQ_USERNAME
         - name: SPRING_RABBITMQ_PASSWORD
           valueFrom:
-            secretKeyRef:
-              name: shipping-service-secret
+            configMapKeyRef:
+              name: shipping-service-config
               key: SPRING_RABBITMQ_PASSWORD
         - name: GHN_API_TOKEN
           valueFrom:
