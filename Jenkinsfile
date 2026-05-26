@@ -58,7 +58,6 @@ pipeline {
             steps {
                 withCredentials([
                     usernamePassword(credentialsId: 'db-creds', usernameVariable: 'DB_USERNAME', passwordVariable: 'DB_PASSWORD'),
-                    usernamePassword(credentialsId: 'rabbitmq-creds', usernameVariable: 'SPRING_RABBITMQ_USERNAME', passwordVariable: 'SPRING_RABBITMQ_PASSWORD'),
                     string(credentialsId: 'ghn-api-token', variable: 'GHN_API_TOKEN')
                 ]) {
                     sh '''
@@ -74,8 +73,6 @@ pipeline {
                 kubectl create secret generic shipping-service-secret \
                   --from-literal=SPRING_DATASOURCE_USERNAME="$DB_USERNAME" \
                   --from-literal=SPRING_DATASOURCE_PASSWORD="$DB_PASSWORD" \
-                  --from-literal=SPRING_RABBITMQ_USERNAME="$SPRING_RABBITMQ_USERNAME" \
-                  --from-literal=SPRING_RABBITMQ_PASSWORD="$SPRING_RABBITMQ_PASSWORD" \
                   --from-literal=GHN_API_TOKEN="$GHN_API_TOKEN" \
                   --dry-run=client -o yaml | kubectl apply -f -
 
