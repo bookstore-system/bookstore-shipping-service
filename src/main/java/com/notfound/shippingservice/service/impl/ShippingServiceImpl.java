@@ -4,13 +4,18 @@ import com.notfound.shippingservice.client.GhnApiClient;
 import com.notfound.shippingservice.exception.ShippingServiceException;
 import com.notfound.shippingservice.model.dto.request.CancelShippingOrderRequest;
 import com.notfound.shippingservice.model.dto.request.CreateShippingOrderRequest;
+import com.notfound.shippingservice.model.dto.request.PrintOrderRequest;
 import com.notfound.shippingservice.model.dto.request.ShippingFeeRequest;
 import com.notfound.shippingservice.model.dto.response.CancelShippingOrderResponse;
 import com.notfound.shippingservice.model.dto.response.CreateShippingOrderResponse;
 import com.notfound.shippingservice.model.dto.response.DistrictResponse;
+import com.notfound.shippingservice.model.dto.response.PrintOrderResponse;
 import com.notfound.shippingservice.model.dto.response.ProvinceResponse;
+import com.notfound.shippingservice.model.dto.response.ShipmentResponse;
 import com.notfound.shippingservice.model.dto.response.ShippingFeeResponse;
 import com.notfound.shippingservice.model.dto.response.WardResponse;
+import com.notfound.shippingservice.model.entity.Shipment;
+import com.notfound.shippingservice.repository.ShipmentRepository;
 import com.notfound.shippingservice.service.ShippingService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -24,13 +29,16 @@ import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.UUID;
 
 @Slf4j
 @Service
 @RequiredArgsConstructor
 public class ShippingServiceImpl implements ShippingService {
+    private static final int GHN_PRINT_TOKEN_EXPIRY_MINUTES = 30;
 
     private final GhnApiClient ghnApiClient;
+    private final ShipmentRepository shipmentRepository;
 
     @Value("${shipment.ghn.shopId}")
     private String shopId;
@@ -73,6 +81,9 @@ public class ShippingServiceImpl implements ShippingService {
 
     @Value("${shipment.ghn.createFallbackEnabled:true}")
     private boolean createFallbackEnabled;
+
+    @Value("${shipment.ghn.url}")
+    private String ghnApiUrl;
 
     @Override
     public ShippingFeeResponse calculateFee(ShippingFeeRequest request) {
@@ -287,6 +298,51 @@ public class ShippingServiceImpl implements ShippingService {
         }
     }
 
+    @Override
+    public ShipmentResponse getShipmentByOrderId(UUID orderId) {
+        Shipment shipment = findShipmentByOrderId(orderId);
+        return mapShipmentResponse(shipment);
+    }
+
+    @Override
+    public PrintOrderResponse generatePrintOrder(PrintOrderRequest request) {
+        List<String> orderCodes = normalizeOrderCodes(request.getOrderCodes());
+        String paperSize = normalizePaperSize(request.getPaperSize());
+        try {
+            Map<String, Object> body = callGhnGeneratePrintTokenApi(orderCodes);
+            Map<String, Object> data = asMap(body.get("data"));
+            String token = stringValue(data.get("token"));
+            if (isBlank(token)) {
+                throw new ShippingServiceException("GHN print token is empty");
+            }
+
+            return PrintOrderResponse.builder()
+                    .orderCodes(orderCodes)
+                    .paperSize(paperSize)
+                    .token(token)
+                    .printUrl(buildPrintUrl(paperSize, token))
+                    .expiresInMinutes(GHN_PRINT_TOKEN_EXPIRY_MINUTES)
+                    .build();
+        } catch (ShippingServiceException ex) {
+            throw ex;
+        } catch (Exception ex) {
+            log.error("Failed to generate GHN print token for orderCodes={}", orderCodes, ex);
+            throw new ShippingServiceException("Failed to generate GHN print order token");
+        }
+    }
+
+    @Override
+    public PrintOrderResponse generatePrintOrderByOrderId(UUID orderId, String paperSize) {
+        Shipment shipment = findShipmentByOrderId(orderId);
+        if (isBlank(shipment.getShippingOrderCode())) {
+            throw new ShippingServiceException("Shipment does not have a GHN order code");
+        }
+        return generatePrintOrder(PrintOrderRequest.builder()
+                .orderCodes(List.of(shipment.getShippingOrderCode()))
+                .paperSize(paperSize)
+                .build());
+    }
+
     private Map<String, Object> buildCreateOrderPayload(CreateShippingOrderRequest request) {
         return Map.ofEntries(
                 Map.entry("payment_type_id", 2),
@@ -340,6 +396,82 @@ public class ShippingServiceImpl implements ShippingService {
         return body;
     }
 
+    private Map<String, Object> callGhnGeneratePrintTokenApi(List<String> orderCodes) {
+        Map<String, Object> payload = Map.of("order_codes", orderCodes);
+        Map<String, Object> body = asMap(ghnApiClient.generatePrintToken(payload));
+        if (!Integer.valueOf(200).equals(body.get("code"))) {
+            throw new ShippingServiceException(String.valueOf(body.getOrDefault("message", "GHN print token API error")));
+        }
+        return body;
+    }
+
+    private Shipment findShipmentByOrderId(UUID orderId) {
+        if (orderId == null) {
+            throw new ShippingServiceException("orderId is required");
+        }
+        return shipmentRepository.findByOrderId(orderId)
+                .orElseThrow(() -> new ShippingServiceException("Shipment not found for orderId: " + orderId));
+    }
+
+    private ShipmentResponse mapShipmentResponse(Shipment shipment) {
+        return ShipmentResponse.builder()
+                .id(shipment.getId())
+                .orderId(shipment.getOrderId())
+                .sagaId(shipment.getSagaId())
+                .shippingOrderCode(shipment.getShippingOrderCode())
+                .status(shipment.getStatus() == null ? null : shipment.getStatus().name())
+                .totalFee(shipment.getTotalFee())
+                .expectedDeliveryTime(shipment.getExpectedDeliveryTime())
+                .lastError(shipment.getLastError())
+                .build();
+    }
+
+    private List<String> normalizeOrderCodes(List<String> orderCodes) {
+        if (orderCodes == null) {
+            throw new ShippingServiceException("orderCodes is required");
+        }
+        List<String> normalized = orderCodes.stream()
+                .filter(code -> code != null && !code.isBlank())
+                .map(String::trim)
+                .distinct()
+                .toList();
+        if (normalized.isEmpty()) {
+            throw new ShippingServiceException("orderCodes is required");
+        }
+        return normalized;
+    }
+
+    private String normalizePaperSize(String paperSize) {
+        if (paperSize == null || paperSize.isBlank()) {
+            return "A5";
+        }
+        String normalized = paperSize.trim().toUpperCase().replace("X", "x");
+        return switch (normalized) {
+            case "A5", "80x80", "50x72", "52x70" -> normalized;
+            default -> throw new ShippingServiceException("Unsupported print paper size: " + paperSize);
+        };
+    }
+
+    private String buildPrintUrl(String paperSize, String token) {
+        String printPath = switch (paperSize) {
+            case "80x80" -> "/a5/public-api/print80x80";
+            case "50x72", "52x70" -> "/a5/public-api/print52x70";
+            default -> "/a5/public-api/printA5";
+        };
+        return resolveGhnGatewayBaseUrl() + printPath + "?token=" + token;
+    }
+
+    private String resolveGhnGatewayBaseUrl() {
+        String url = ghnApiUrl == null ? "" : ghnApiUrl.trim();
+        if (url.endsWith("/shiip/public-api")) {
+            return url.substring(0, url.length() - "/shiip/public-api".length());
+        }
+        if (url.endsWith("/shiip/public-api/")) {
+            return url.substring(0, url.length() - "/shiip/public-api/".length());
+        }
+        return url.endsWith("/") ? url.substring(0, url.length() - 1) : url;
+    }
+
     @SuppressWarnings("unchecked")
     private Map<String, Object> asMap(Object value) {
         if (!(value instanceof Map<?, ?> mapValue)) {
@@ -375,5 +507,9 @@ public class ShippingServiceImpl implements ShippingService {
 
     private boolean isBlank(String value) {
         return value == null || value.trim().isEmpty();
+    }
+
+    private String stringValue(Object value) {
+        return value == null ? null : String.valueOf(value);
     }
 }
