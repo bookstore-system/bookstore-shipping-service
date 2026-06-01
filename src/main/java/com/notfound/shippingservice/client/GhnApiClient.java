@@ -45,4 +45,7 @@ public interface GhnApiClient {
             @RequestHeader("ShopId") String shopId,
             @RequestBody Map<String, Object> body
     );
+
+    @PostMapping("/v2/a5/gen-token")
+    Map<String, Object> generatePrintToken(@RequestBody Map<String, Object> body);
 }
