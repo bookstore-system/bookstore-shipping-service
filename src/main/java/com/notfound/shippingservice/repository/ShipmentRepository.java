@@ -9,4 +9,6 @@ import java.util.UUID;
 public interface ShipmentRepository extends JpaRepository<Shipment, UUID> {
 
     Optional<Shipment> findBySagaId(UUID sagaId);
+
+    Optional<Shipment> findByOrderId(UUID orderId);
 }
